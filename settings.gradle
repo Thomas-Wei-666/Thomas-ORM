@@ -1,0 +1,3 @@
+rootProject.name = "TASK222"
+include ':app'
+include ':simpleorm'
