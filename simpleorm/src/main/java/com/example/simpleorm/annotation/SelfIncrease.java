@@ -7,6 +7,6 @@ import java.lang.annotation.Target;
 
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)
-public @interface Primary {
-    boolean isPrimary() default true;
+public @interface SelfIncrease {
+    boolean selfIncrease() default true;
 }
