@@ -5,6 +5,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
 import com.example.simpleorm.annotation.Column;
+import com.example.simpleorm.annotation.Default;
 import com.example.simpleorm.annotation.NotNull;
 import com.example.simpleorm.annotation.Primary;
 import com.example.simpleorm.annotation.Table;
@@ -56,6 +57,12 @@ public class DatabaseManager<T> {
                     singleColumn.setAutoIncrement(getAutoIncrement(field));
                     singleColumn.setTYPE(getTYPE(field));
                     singleColumn.setNotnull(getNotNull(field));
+                    if (field.isAnnotationPresent(Default.class)) {
+                        singleColumn.setDefaultSet(true);
+                        singleColumn.setDefaultValue(getDefault(field));
+                    } else {
+                        singleColumn.setDefaultSet(false);
+                    }
                     myColumnList.add(singleColumn);
                 }
             } else {
@@ -76,15 +83,15 @@ public class DatabaseManager<T> {
         }
     }
 
-    private boolean getNotNull(Field field){
-        if (field.isAnnotationPresent(NotNull.class)){
+    private boolean getNotNull(Field field) {
+        if (field.isAnnotationPresent(NotNull.class)) {
             NotNull notNull = field.getAnnotation(NotNull.class);
-            if (notNull.Notnull()){
+            if (notNull.Notnull()) {
                 return true;
-            }else {
+            } else {
                 return false;
             }
-        }else {
+        } else {
             return false;
         }
     }
@@ -149,14 +156,50 @@ public class DatabaseManager<T> {
         return res;
     }
 
+    private String getDefault(Field field) {
+        Class tempClass = field.getClass();
+        Class typeClass = field.getType();
+        Default defaultValue = field.getAnnotation(Default.class);
+        String res = null;
+        if (typeClass == String.class) {
+            res = defaultValue.defaultString();
+        } else if (typeClass == Short.class || typeClass == short.class) {
+            res = String.valueOf(defaultValue.defaultShort());
+        } else if (typeClass == int.class || typeClass == Integer.class) {
+            res = String.valueOf(defaultValue.defaultInt());
+        } else if (typeClass == Long.class || typeClass == long.class) {
+            res = String.valueOf(defaultValue.defaultLong());
+        } else if (typeClass == float.class || typeClass == Float.class) {
+            res = String.valueOf(defaultValue.defaultFloat());
+        } else if (typeClass == double.class || typeClass == Double.class) {
+            res = String.valueOf(defaultValue.defaultDouble());
+        } else if (typeClass == boolean.class || typeClass == Boolean.class) {
+            if (defaultValue.defaultBoolean()) {
+                res = "1";
+            } else {
+                res = "0";
+            }
+        } else {
+            try {
+                throw new ORMException("invalid default type");
+            } catch (ORMException e) {
+                e.printStackTrace();
+            }
+        }
+        return res;
+    }
+
 
     public void createTable() {
         StringBuilder builder = new StringBuilder();
         builder.append("create table if not exists ").append(TableName + " ").append("(");
         for (MyColumn myColumn : myColumnList) {
             builder.append(myColumn.getColumnName() + " ").append(myColumn.getTYPE() + " ");
-            if (myColumn.isNotnull()){
+            if (myColumn.isNotnull()) {
                 builder.append("not null ");
+            }
+            if (myColumn.isDefaultSet()) {
+                builder.append("default " + myColumn.getDefaultValue() + " ");
             }
             if (myColumn.isPrimary()) {
                 builder.append("primary key ");
@@ -198,10 +241,10 @@ public class DatabaseManager<T> {
                 fields[i].setAccessible(true);
                 Object obj = fields[i].get(t);
 
-                if (myColumn.isNotnull()&&obj == null){
+                if (myColumn.isNotnull() && obj == null) {
                     try {
-                        throw new ORMException(myColumn.getColumnName()+"is not null");
-                    }catch (ORMException e){
+                        throw new ORMException(myColumn.getColumnName() + "is not null");
+                    } catch (ORMException e) {
                         e.printStackTrace();
                     }
                 }
@@ -239,10 +282,10 @@ public class DatabaseManager<T> {
             e.printStackTrace();
         }
 
-        long res = mDatabase.insert(TableName,null,contentValues);
-        if (res == 1){
+        long res = mDatabase.insert(TableName, null, contentValues);
+        if (res == 1) {
             return false;
-        }else {
+        } else {
             return true;
         }
     }

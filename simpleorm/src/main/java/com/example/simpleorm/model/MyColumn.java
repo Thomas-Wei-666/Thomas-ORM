@@ -5,8 +5,25 @@ public class MyColumn {
     private boolean isPrimary;
     private boolean isAutoIncrement;
     private String TYPE;
-
+    private String defaultValue;
+    private boolean isDefaultSet;
     private boolean Notnull;
+
+    public String getDefaultValue() {
+        return defaultValue;
+    }
+
+    public boolean isDefaultSet() {
+        return isDefaultSet;
+    }
+
+    public void setDefaultSet(boolean defaultSet) {
+        isDefaultSet = defaultSet;
+    }
+
+    public void setDefaultValue(String defaultValue) {
+        this.defaultValue = defaultValue;
+    }
 
     public boolean isNotnull() {
         return Notnull;
