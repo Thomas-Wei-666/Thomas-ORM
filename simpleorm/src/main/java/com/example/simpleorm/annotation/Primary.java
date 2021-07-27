@@ -9,4 +9,5 @@ import java.lang.annotation.Target;
 @Target(ElementType.FIELD)
 public @interface Primary {
     boolean isPrimary() default true;
+    boolean isAutoIncrement() default true;
 }

@@ -1,18 +1,17 @@
 package com.example.simpleorm.model;
 
+import android.content.ContentValues;
 import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
 import com.example.simpleorm.annotation.Column;
+import com.example.simpleorm.annotation.NotNull;
 import com.example.simpleorm.annotation.Primary;
-import com.example.simpleorm.annotation.SelfIncrease;
 import com.example.simpleorm.annotation.Table;
 import com.example.simpleorm.exception.ORMException;
-import com.google.android.material.tabs.TabLayout;
 
 import java.lang.reflect.Field;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
 
 public class DatabaseManager<T> {
@@ -20,6 +19,7 @@ public class DatabaseManager<T> {
     private SQLiteDatabase mDatabase;
     private List<MyColumn> myColumnList;
     private String TableName;
+
 
     public DatabaseManager(T target, SQLiteDatabase database) {
         this.target = target;
@@ -53,8 +53,9 @@ public class DatabaseManager<T> {
                     MyColumn singleColumn = new MyColumn();
                     singleColumn.setColumnName(getColumnName(field));
                     singleColumn.setPrimary(getPrimary(field));
-                    singleColumn.setSelfIncrease(getSelfIncrease(field));
+                    singleColumn.setAutoIncrement(getAutoIncrement(field));
                     singleColumn.setTYPE(getTYPE(field));
+                    singleColumn.setNotnull(getNotNull(field));
                     myColumnList.add(singleColumn);
                 }
             } else {
@@ -72,6 +73,19 @@ public class DatabaseManager<T> {
             } catch (ORMException e) {
                 e.printStackTrace();
             }
+        }
+    }
+
+    private boolean getNotNull(Field field){
+        if (field.isAnnotationPresent(NotNull.class)){
+            NotNull notNull = field.getAnnotation(NotNull.class);
+            if (notNull.Notnull()){
+                return true;
+            }else {
+                return false;
+            }
+        }else {
+            return false;
         }
     }
 
@@ -102,10 +116,10 @@ public class DatabaseManager<T> {
         }
     }
 
-    private boolean getSelfIncrease(Field field) {
-        if (field.isAnnotationPresent(SelfIncrease.class) && field.isAnnotationPresent(Primary.class)) {
-            SelfIncrease selfIncrease = field.getAnnotation(SelfIncrease.class);
-            if (selfIncrease.selfIncrease()) {
+    private boolean getAutoIncrement(Field field) {
+        if (field.isAnnotationPresent(Primary.class)) {
+            Primary primary = field.getAnnotation(Primary.class);
+            if (primary.isAutoIncrement()) {
                 return true;
             } else {
                 return false;
@@ -125,8 +139,6 @@ public class DatabaseManager<T> {
             res = "integer";
         } else if (fieldType == float.class || fieldType == double.class || fieldType == Float.class || fieldType == Double.class) {
             res = "real";
-        } else if (fieldType == byte[].class) {
-            res = "blob";
         } else {
             try {
                 throw new ORMException("no TYPE matched");
@@ -143,9 +155,12 @@ public class DatabaseManager<T> {
         builder.append("create table if not exists ").append(TableName + " ").append("(");
         for (MyColumn myColumn : myColumnList) {
             builder.append(myColumn.getColumnName() + " ").append(myColumn.getTYPE() + " ");
-            if (myColumn.isPrimary()){
+            if (myColumn.isNotnull()){
+                builder.append("not null ");
+            }
+            if (myColumn.isPrimary()) {
                 builder.append("primary key ");
-                if (myColumn.isSelfIncrease()){
+                if (myColumn.isAutoIncrement()) {
                     builder.append("autoincrement ");
                 }
             }
@@ -154,12 +169,12 @@ public class DatabaseManager<T> {
         builder.deleteCharAt(builder.length() - 1);
         builder.append(");");
 
-        Log.i("mysql",builder.toString());
+        Log.i("mysql", builder.toString());
         mDatabase.execSQL(builder.toString());
     }
 
-    public SQLiteDatabase getDatabase(){
-        if (mDatabase == null){
+    public SQLiteDatabase getDatabase() {
+        if (mDatabase == null) {
             try {
                 throw new ORMException("database is null");
             } catch (ORMException e) {
@@ -167,5 +182,68 @@ public class DatabaseManager<T> {
             }
         }
         return mDatabase;
+    }
+
+    public boolean insert(T t) {
+        Class tempClass = t.getClass();
+        int i = 0;
+        ContentValues contentValues = new ContentValues();
+        Field[] fields = tempClass.getDeclaredFields();
+        try {
+            for (MyColumn myColumn : myColumnList) {
+                if (myColumn.isAutoIncrement()) {
+                    i++;
+                    continue;
+                }
+                fields[i].setAccessible(true);
+                Object obj = fields[i].get(t);
+
+                if (myColumn.isNotnull()&&obj == null){
+                    try {
+                        throw new ORMException(myColumn.getColumnName()+"is not null");
+                    }catch (ORMException e){
+                        e.printStackTrace();
+                    }
+                }
+
+                if (obj instanceof String) {
+                    contentValues.put(myColumn.getColumnName(), (String) obj);
+                } else if (obj instanceof Boolean) {
+                    if ((Boolean) obj) {
+                        contentValues.put(myColumn.getColumnName(), (short) 1);
+                    } else {
+                        contentValues.put(myColumn.getColumnName(), (short) 0);
+                    }
+                } else if (obj instanceof Short) {
+                    contentValues.put(myColumn.getColumnName(), (Short) obj);
+                } else if (obj instanceof Integer) {
+                    contentValues.put(myColumn.getColumnName(), (Integer) obj);
+                } else if (obj instanceof Long) {
+                    contentValues.put(myColumn.getColumnName(), (Long) obj);
+                } else if (obj instanceof Float) {
+                    contentValues.put(myColumn.getColumnName(), (Float) obj);
+                } else if (obj instanceof Double) {
+                    contentValues.put(myColumn.getColumnName(), (Double) obj);
+                } else {
+                    try {
+                        throw new ORMException("invalid type");
+                    } catch (ORMException e) {
+                        e.printStackTrace();
+                    }
+
+                }
+                i++;
+
+            }
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
+
+        long res = mDatabase.insert(TableName,null,contentValues);
+        if (res == 1){
+            return false;
+        }else {
+            return true;
+        }
     }
 }

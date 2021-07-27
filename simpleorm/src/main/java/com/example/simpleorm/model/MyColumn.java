@@ -3,8 +3,18 @@ package com.example.simpleorm.model;
 public class MyColumn {
     private String ColumnName;
     private boolean isPrimary;
-    private boolean selfIncrease;
+    private boolean isAutoIncrement;
     private String TYPE;
+
+    private boolean Notnull;
+
+    public boolean isNotnull() {
+        return Notnull;
+    }
+
+    public void setNotnull(boolean notnull) {
+        Notnull = notnull;
+    }
 
     public void setTYPE(String TYPE) {
         this.TYPE = TYPE;
@@ -22,8 +32,8 @@ public class MyColumn {
         isPrimary = primary;
     }
 
-    public void setSelfIncrease(boolean selfIncrease) {
-        this.selfIncrease = selfIncrease;
+    public void setAutoIncrement(boolean autoIncrement) {
+        this.isAutoIncrement = autoIncrement;
     }
 
     public String getColumnName() {
@@ -34,7 +44,7 @@ public class MyColumn {
         return isPrimary;
     }
 
-    public boolean isSelfIncrease() {
-        return selfIncrease;
+    public boolean isAutoIncrement() {
+        return isAutoIncrement;
     }
 }
