@@ -1,6 +1,7 @@
 package com.example.simpleorm.model;
 
 import android.content.ContentValues;
+import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.util.Log;
 
@@ -19,7 +20,16 @@ public class DatabaseManager<T> {
     private T target;
     private SQLiteDatabase mDatabase;
     private List<MyColumn> myColumnList;
-    private String TableName;
+    private static String TableName;
+
+    private Cursor cursor = null;
+    private String[] columnNames = null;
+    private String whereClause = null;
+    private String[] whereArgs = null;
+    private String groupBy = null;
+    private String having = null;
+    private String orderBy = null;
+    private String limit = null;
 
 
     public DatabaseManager(T target, SQLiteDatabase database) {
@@ -227,7 +237,7 @@ public class DatabaseManager<T> {
         return mDatabase;
     }
 
-    public boolean insert(T t) {
+    public void insert(T t) {
         Class tempClass = t.getClass();
         int i = 0;
         ContentValues contentValues = new ContentValues();
@@ -282,11 +292,71 @@ public class DatabaseManager<T> {
             e.printStackTrace();
         }
 
-        long res = mDatabase.insert(TableName, null, contentValues);
-        if (res == 1) {
-            return false;
-        } else {
-            return true;
-        }
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                synchronized (TableName){
+                    mDatabase.insert(TableName, null, contentValues);
+                }
+            }
+        }).start();
+
+
+
     }
+
+    public DatabaseManager<T> query(String[] columnNames) {
+        this.columnNames = columnNames;
+        cursor = mDatabase.query(TableName, columnNames, whereClause, whereArgs, groupBy, having, orderBy);
+        return this;
+    }
+
+    public DatabaseManager<T> whereClause(String whereClause) {
+        this.whereClause = whereClause;
+        cursor = mDatabase.query(TableName, columnNames, whereClause, whereArgs, groupBy, having, orderBy);
+        return this;
+    }
+
+    public DatabaseManager<T> whereArgs(String... whereArgs) {
+        this.whereArgs = whereArgs;
+        cursor = mDatabase.query(TableName, columnNames, whereClause, whereArgs, groupBy, having, orderBy);
+        return this;
+    }
+
+    public String and(String... items) {
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < items.length; i++) {
+            builder.append(items[i]);
+            if (i != items.length - 1) {
+                builder.append(" and");
+            }
+        }
+        Log.i("and", builder.toString());
+        return builder.toString();
+    }
+
+    public String or(String... items) {
+        StringBuilder builder = new StringBuilder();
+        for (int i = 0; i < items.length; i++) {
+            builder.append(items[i]);
+            if (i != items.length - 1) {
+                builder.append(" or");
+            }
+        }
+        Log.i("or", builder.toString());
+        return builder.toString();
+    }
+
+
+    public Cursor getCursor() {
+        if (cursor == null) {
+            try {
+                throw new ORMException("must invoke method 'query' before get cursor");
+            } catch (ORMException e) {
+                e.printStackTrace();
+            }
+        }
+        return cursor;
+    }
+
 }
