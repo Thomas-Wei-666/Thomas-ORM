@@ -13,11 +13,12 @@ import com.example.simpleorm.annotation.Table;
 import com.example.simpleorm.exception.ORMException;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
 import java.util.List;
 
 public class DatabaseManager<T> {
-    private T target;
+    private Class<T> targetClass;
     private SQLiteDatabase mDatabase;
     private List<MyColumn> myColumnList;
     private static String TableName;
@@ -32,21 +33,19 @@ public class DatabaseManager<T> {
     private String limit = null;
 
 
-    public DatabaseManager(T target, SQLiteDatabase database) {
-        this.target = target;
+    public DatabaseManager(Class<T> targetClass,SQLiteDatabase database) {
+        this.targetClass = targetClass;
         mDatabase = database;
         myColumnList = new ArrayList<>();
         init();
     }
 
     private void init() {
-        if (target != null && mDatabase != null) {
-            Class targetClass = target.getClass();
-
+        if (mDatabase != null) {
             if (targetClass.isAnnotationPresent(Table.class)) {
                 Table table = (Table) targetClass.getAnnotation(Table.class);
                 if (table.name().equals("")) {
-                    TableName = targetClass.getName();
+                    TableName = targetClass.getSimpleName();
                 } else {
                     TableName = table.name();
                 }
@@ -305,7 +304,7 @@ public class DatabaseManager<T> {
 
     }
 
-    public DatabaseManager<T> query(String[] columnNames) {
+    public DatabaseManager<T> query(String ... columnNames) {
         this.columnNames = columnNames;
         cursor = mDatabase.query(TableName, columnNames, whereClause, whereArgs, groupBy, having, orderBy);
         return this;
