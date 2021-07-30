@@ -11,7 +11,7 @@ public class and implements ComplexCondition {
         for (int i = 0; i < items.length; i++) {
             builder.append(items[i]);
             if (i != items.length - 1) {
-                builder.append(" and");
+                builder.append(" and ");
             }
         }
     }

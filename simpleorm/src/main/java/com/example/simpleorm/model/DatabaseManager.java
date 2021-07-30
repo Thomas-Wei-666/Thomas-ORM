@@ -14,17 +14,18 @@ import com.example.simpleorm.exception.ORMException;
 import com.example.simpleorm.interfaces.ComplexCondition;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.ParameterizedType;
 import java.util.ArrayList;
 import java.util.List;
 
 public class DatabaseManager<T> {
+    private static final String TAG = "queryArgs";
     private Class<T> targetClass;
     private SQLiteDatabase mDatabase;
     private List<MyColumn> myColumnList;
     private static String TableName;
 
-    private boolean isTableCreated = false;
 
     private Cursor cursor = null;
     private String[] columnNames = null;
@@ -239,7 +240,6 @@ public class DatabaseManager<T> {
 
         Log.i("mysql", builder.toString());
         mDatabase.execSQL(builder.toString());
-        isTableCreated = true;
     }
 
     public SQLiteDatabase getDatabase() {
@@ -252,9 +252,16 @@ public class DatabaseManager<T> {
         }
         return mDatabase;
     }
+    //--------------------------------------------------------------------------------
+
+    public void insertList(List<T> tList){
+        for (T t : tList){
+            insert(t);
+        }
+    }
 
     public void insert(T t) {
-        if (isTableCreated) {
+
             Class tempClass = t.getClass();
             int i = 0;
             ContentValues contentValues = new ContentValues();
@@ -316,34 +323,28 @@ public class DatabaseManager<T> {
                     }
                 }
             }).start();
-        } else {
-            try {
-                throw new ORMException("must invoke method 'create()' first");
-            } catch (ORMException e) {
-                e.printStackTrace();
-            }
-        }
+
     }
     //--------------------------------------------------------------------------------
 
-    public DatabaseManager<T> deleteMode(){
+    public DatabaseManager<T> deleteMode() {
         isInDeleteMode = true;
         return this;
     }
 
-    public void delete(){
-        if (isInDeleteMode){
-            if (isWhere){
-                mDatabase.delete(TableName,whereClause,whereArgs);
+    public void delete() {
+        if (isInDeleteMode) {
+            if (isWhere) {
+                mDatabase.delete(TableName, whereClause, whereArgs);
                 resetArgs();
-            }else {
+            } else {
                 try {
                     throw new ORMException("must have whereClause");
                 } catch (ORMException e) {
                     e.printStackTrace();
                 }
             }
-        }else {
+        } else {
             try {
                 throw new ORMException("must in delete mode");
             } catch (ORMException e) {
@@ -354,15 +355,15 @@ public class DatabaseManager<T> {
 
     //---------------------------------------------------------------------------------
 
-    public DatabaseManager<T> setUpdateData(T t){
+    public DatabaseManager<T> setUpdateData(T t) {
         isUpdateDataSet = true;
         UpdateData = t;
         return this;
     }
 
-    public void update(){
-        if (isUpdateDataSet){
-            if (isWhere){
+    public void update() {
+        if (isUpdateDataSet) {
+            if (isWhere) {
                 Class tempClass = UpdateData.getClass();
                 int i = 0;
                 ContentValues contentValues = new ContentValues();
@@ -412,9 +413,9 @@ public class DatabaseManager<T> {
                     e.printStackTrace();
                 }
 
-                mDatabase.update(TableName,contentValues,whereClause,whereArgs);
+                mDatabase.update(TableName, contentValues, whereClause, whereArgs);
                 resetArgs();
-            }else {
+            } else {
                 try {
                     throw new ORMException("must set whereClause");
                 } catch (ORMException e) {
@@ -429,7 +430,6 @@ public class DatabaseManager<T> {
             }
         }
     }
-
 
 
     //----------------------------------------------------------------------------------
@@ -463,12 +463,13 @@ public class DatabaseManager<T> {
     }
 
     public DatabaseManager<T> whereClause(ComplexCondition complexCondition) {
-        if ((isQueried && !isWhere)||(isUpdateDataSet && !isWhere)) {
+        if ((isQueried && !isWhere) || (isUpdateDataSet && !isWhere)||(isInDeleteMode && !isWhere)) {
             this.whereClause = complexCondition.decodeCondition();
             isWhere = true;
         } else {
             try {
                 if (!isQueried && isWhere) {
+                    Log.i("LogicTest",String.valueOf(isQueried));
                     throw new ORMException("must invoke query() first or whereClause() has already been invoked");
                 } else {
                     throw new ORMException("must invoke setUpdateData() first or whereClause() has already been invoked");
@@ -566,8 +567,9 @@ public class DatabaseManager<T> {
     }
 
 
-    public List<T> getQueryResultAsInstance(){
+    public List<T> getQueryResultAsInstance() {
         List<T> listResult = new ArrayList<>();
+        cursor = mDatabase.query(TableName, columnNames, whereClause, whereArgs, groupBy, having, orderBy, limit);
         if (cursor == null) {
             try {
                 throw new ORMException("must invoke method 'query' before get result");
@@ -576,57 +578,79 @@ public class DatabaseManager<T> {
             }
         } else {
             resetArgs();
-            cursor = mDatabase.query(TableName, columnNames, whereClause, whereArgs, groupBy, having, orderBy, limit);
             Field[] fields = targetClass.getDeclaredFields();
+            int i = 0;
             while (cursor.moveToNext()) {
+                T res = null;
+                try {
+                    res = targetClass.newInstance();
+                } catch (IllegalAccessException e) {
+                    e.printStackTrace();
+                } catch (InstantiationException e) {
+                    e.printStackTrace();
+                }
                 for (MyColumn myColumn : myColumnList) {
                     int columnIndex = cursor.getColumnIndex(myColumn.getColumnName());
+                    Log.i(TAG, String.valueOf(columnIndex));
                     if (columnIndex == -1) {
+                        i++;
                         continue;
                     } else {
-                        Field field = fields[columnIndex];
+                        Field field = fields[i];
+                        i++;
                         field.setAccessible(true);
-                        T res = null;
-                        try {
-                            res = targetClass.newInstance();
-                        } catch (IllegalAccessException | InstantiationException e) {
-                            e.printStackTrace();
-                        }
-                        if (field.getType() == String.class){
+
+                        Log.i("IsNull",String.valueOf(res == null));
+                        if (field.getType() == String.class) {
                             try {
                                 field.set(res, cursor.getString(columnIndex));
                             } catch (IllegalAccessException e) {
                                 e.printStackTrace();
                             }
-                        } else if (field.getType() == int.class){
+                        } else if (field.getType() == int.class) {
                             try {
                                 field.set(res, cursor.getInt(columnIndex));
                             } catch (IllegalAccessException e) {
                                 e.printStackTrace();
                             }
-                        } else if (field .getType() == short.class){
+                        } else if (field.getType() == short.class) {
                             try {
                                 field.set(res, cursor.getShort(columnIndex));
                             } catch (IllegalAccessException e) {
                                 e.printStackTrace();
                             }
-                        }else if (field.getType() == long.class){
+                        } else if (field.getType() == long.class) {
                             try {
                                 field.set(res, cursor.getLong(columnIndex));
                             } catch (IllegalAccessException e) {
                                 e.printStackTrace();
                             }
-                        } else if (field.getType() == float.class){
+                        } else if (field.getType() == float.class) {
                             try {
                                 field.set(res, cursor.getFloat(columnIndex));
                             } catch (IllegalAccessException e) {
                                 e.printStackTrace();
                             }
-                        } else if (field.getType() == double.class){
+                        } else if (field.getType() == double.class) {
                             try {
                                 field.set(res, cursor.getDouble(columnIndex));
                             } catch (IllegalAccessException e) {
                                 e.printStackTrace();
+                            }
+                        } else if (field.getType() == boolean.class) {
+                            int temp = cursor.getInt(columnIndex);
+                            if (temp == 1) {
+                                try {
+                                    field.set(res, true);
+                                } catch (IllegalAccessException e) {
+                                    e.printStackTrace();
+                                }
+                            } else {
+                                try {
+                                    field.set(res, false);
+                                } catch (IllegalAccessException e) {
+                                    e.printStackTrace();
+                                }
                             }
                         } else {
                             try {
@@ -635,9 +659,10 @@ public class DatabaseManager<T> {
                                 e.printStackTrace();
                             }
                         }
-                        listResult.add(res);
+
                     }
                 }
+                listResult.add(res);
 
             }
         }
@@ -647,16 +672,9 @@ public class DatabaseManager<T> {
     //------------------------------------------------------------------------------------
 
     public void drop() {
-        if (isTableCreated) {
-            isTableCreated = false;
-            mDatabase.execSQL("drop table " + TableName);
-        } else {
-            try {
-                throw new ORMException("must create a table first");
-            } catch (ORMException e) {
-                e.printStackTrace();
-            }
-        }
+
+        mDatabase.execSQL("drop table " + TableName);
+
     }
 
     private void resetArgs() {
