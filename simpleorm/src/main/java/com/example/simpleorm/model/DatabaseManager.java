@@ -565,10 +565,9 @@ public class DatabaseManager<T> {
         return cursor;
     }
 
-    /**
-        要返回示例吗，，，还没想好怎么写
-    public T getQueryResultAsInstance(){
-        T resultInstance = null;
+
+    public List<T> getQueryResultAsInstance(){
+        List<T> listResult = new ArrayList<>();
         if (cursor == null) {
             try {
                 throw new ORMException("must invoke method 'query' before get result");
@@ -578,28 +577,73 @@ public class DatabaseManager<T> {
         } else {
             resetArgs();
             cursor = mDatabase.query(TableName, columnNames, whereClause, whereArgs, groupBy, having, orderBy, limit);
-            try {
-                resultInstance = targetClass.newInstance();
-            } catch (IllegalAccessException e) {
-                e.printStackTrace();
-            } catch (InstantiationException e) {
-                e.printStackTrace();
-            }
             Field[] fields = targetClass.getDeclaredFields();
-            for (MyColumn myColumn : myColumnList){
-                int columnIndex = cursor.getColumnIndex(myColumn.getColumnName());
-                if (columnIndex ==-1){
-                    continue;
-                }else {
-                    Field field = fields[columnIndex];
-                    field.setAccessible(true);
+            while (cursor.moveToNext()) {
+                for (MyColumn myColumn : myColumnList) {
+                    int columnIndex = cursor.getColumnIndex(myColumn.getColumnName());
+                    if (columnIndex == -1) {
+                        continue;
+                    } else {
+                        Field field = fields[columnIndex];
+                        field.setAccessible(true);
+                        T res = null;
+                        try {
+                            res = targetClass.newInstance();
+                        } catch (IllegalAccessException | InstantiationException e) {
+                            e.printStackTrace();
+                        }
+                        if (field.getType() == String.class){
+                            try {
+                                field.set(res, cursor.getString(columnIndex));
+                            } catch (IllegalAccessException e) {
+                                e.printStackTrace();
+                            }
+                        } else if (field.getType() == int.class){
+                            try {
+                                field.set(res, cursor.getInt(columnIndex));
+                            } catch (IllegalAccessException e) {
+                                e.printStackTrace();
+                            }
+                        } else if (field .getType() == short.class){
+                            try {
+                                field.set(res, cursor.getShort(columnIndex));
+                            } catch (IllegalAccessException e) {
+                                e.printStackTrace();
+                            }
+                        }else if (field.getType() == long.class){
+                            try {
+                                field.set(res, cursor.getLong(columnIndex));
+                            } catch (IllegalAccessException e) {
+                                e.printStackTrace();
+                            }
+                        } else if (field.getType() == float.class){
+                            try {
+                                field.set(res, cursor.getFloat(columnIndex));
+                            } catch (IllegalAccessException e) {
+                                e.printStackTrace();
+                            }
+                        } else if (field.getType() == double.class){
+                            try {
+                                field.set(res, cursor.getDouble(columnIndex));
+                            } catch (IllegalAccessException e) {
+                                e.printStackTrace();
+                            }
+                        } else {
+                            try {
+                                throw new ORMException("invalid type");
+                            } catch (ORMException e) {
+                                e.printStackTrace();
+                            }
+                        }
+                        listResult.add(res);
+                    }
                 }
-            }
 
+            }
         }
-        return resultInstance;
+        return listResult;
     }
-    **/
+
     //------------------------------------------------------------------------------------
 
     public void drop() {
