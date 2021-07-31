@@ -15,6 +15,7 @@ import android.widget.Button;
 
 import com.ajts.androidmads.library.SQLiteToExcel;
 import com.example.simpleorm.model.DatabaseManager;
+import com.example.simpleorm.model.Operator;
 import com.example.simpleorm.model.and;
 import com.example.task222.R;
 import com.example.task222.bean.Foreigner;
@@ -66,7 +67,7 @@ public class MainActivity extends AppCompatActivity {
         button2.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                List<Foreigner> resultList =  databaseManager.query("name","sex","Nationality").whereClause(new and("age = ?","Nationality = ?")).whereArgs("18","United States").getQueryResultAsInstance();
+                List<Foreigner> resultList =  databaseManager.query("name","sex","Nationality").whereClause(new and(new String[]{"age","Nationality"},new Operator[]{Operator.EQUAL,Operator.EQUAL},new String[]{"18","'United States'"})).getQueryResultAsInstance();
                  for (Foreigner f : resultList){
                      Log.i("Query",f.getName());
                      Log.i("Query",f.getSex());
@@ -78,7 +79,7 @@ public class MainActivity extends AppCompatActivity {
         button3.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                databaseManager.deleteMode().whereClause(new and("age = 35")).delete();
+                databaseManager.deleteMode().whereClause(new and(new String[]{"age"},new Operator[]{Operator.EQUAL},new String[]{"35"})).delete();
             }
         });
 
@@ -86,7 +87,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 Foreigner foreigner1 = new Foreigner("Thomas","Male",18,"United States",190000,false);
-                databaseManager.setUpdateData(foreigner1).whereClause(new and("name = 'Thomas'")).update();
+                databaseManager.setUpdateData(foreigner1).whereClause(new and(new String[]{"name"},new Operator[]{Operator.EQUAL},new String[]{"'Thomas'"})).update();
             }
         });
 

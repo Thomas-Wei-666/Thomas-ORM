@@ -38,7 +38,6 @@ public class DatabaseManager<T> {
 
     private boolean isQueried = false;
     private boolean isWhere = false;
-    private boolean isWhereArg = false;
     private boolean isGroupBy = false;
     private boolean isHaving = false;
     private boolean isOrderedBy = false;
@@ -465,6 +464,7 @@ public class DatabaseManager<T> {
     public DatabaseManager<T> whereClause(ComplexCondition complexCondition) {
         if ((isQueried && !isWhere) || (isUpdateDataSet && !isWhere)||(isInDeleteMode && !isWhere)) {
             this.whereClause = complexCondition.decodeCondition();
+            Log.i("whereClause",this.whereClause);
             isWhere = true;
         } else {
             try {
@@ -481,19 +481,7 @@ public class DatabaseManager<T> {
         return this;
     }
 
-    public DatabaseManager<T> whereArgs(String... whereArgs) {
-        if (isWhere && !isWhereArg) {
-            this.whereArgs = whereArgs;
-            isWhereArg = true;
-        } else {
-            try {
-                throw new ORMException("must invoke method whereClause() first or whereArg() has already been invoked");
-            } catch (ORMException e) {
-                e.printStackTrace();
-            }
-        }
-        return this;
-    }
+
 
     public DatabaseManager<T> groupBy(String groupBy) {
         if (isQueried && !isGroupBy) {
@@ -581,6 +569,7 @@ public class DatabaseManager<T> {
             Field[] fields = targetClass.getDeclaredFields();
             int i = 0;
             while (cursor.moveToNext()) {
+                i = 0;
                 T res = null;
                 try {
                     res = targetClass.newInstance();
@@ -688,7 +677,6 @@ public class DatabaseManager<T> {
 
         isQueried = false;
         isWhere = false;
-        isWhereArg = false;
         isGroupBy = false;
         isHaving = false;
         isOrderedBy = false;
