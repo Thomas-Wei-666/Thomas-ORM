@@ -43,7 +43,6 @@ public class DatabaseManager<T> {
     private boolean isOrderedBy = false;
     private boolean isLimited = false;
 
-    private T UpdateData;
     private boolean isUpdateDataSet = false;
 
     private boolean isInDeleteMode = false;
@@ -255,7 +254,14 @@ public class DatabaseManager<T> {
 
     public void insertList(List<T> tList){
         for (T t : tList){
-            insert(t);
+            new Thread(new Runnable() {
+                @Override
+                public void run() {
+                    synchronized (TableName){
+                        insert(t);
+                    }
+                }
+            }).start();
         }
     }
 
@@ -354,80 +360,87 @@ public class DatabaseManager<T> {
 
     //---------------------------------------------------------------------------------
 
-    public DatabaseManager<T> setUpdateData(T t) {
-        isUpdateDataSet = true;
-        UpdateData = t;
-        return this;
-    }
 
-    public void update() {
-        if (isUpdateDataSet) {
-            if (isWhere) {
-                Class tempClass = UpdateData.getClass();
-                int i = 0;
-                ContentValues contentValues = new ContentValues();
-                Field[] fields = tempClass.getDeclaredFields();
+
+
+
+
+    public void update(T t){
+        Class tClass = t.getClass();
+        Field[] fields = tClass.getDeclaredFields();
+        int id = 0;
+        int i = 0;
+        ContentValues contentValues = new ContentValues();
+        for (Field field : fields){
+            field.setAccessible(true);
+            if (field.isAnnotationPresent(Primary.class)){
                 try {
-                    for (MyColumn myColumn : myColumnList) {
-
-                        fields[i].setAccessible(true);
-                        Object obj = fields[i].get(UpdateData);
-
-                        if (myColumn.isNotnull() && obj == null) {
-                            try {
-                                throw new ORMException(myColumn.getColumnName() + "is not null");
-                            } catch (ORMException e) {
-                                e.printStackTrace();
-                            }
-                        }
-
-                        if (obj instanceof String) {
-                            contentValues.put(myColumn.getColumnName(), (String) obj);
-                        } else if (obj instanceof Boolean) {
-                            if ((Boolean) obj) {
-                                contentValues.put(myColumn.getColumnName(), (short) 1);
-                            } else {
-                                contentValues.put(myColumn.getColumnName(), (short) 0);
-                            }
-                        } else if (obj instanceof Short) {
-                            contentValues.put(myColumn.getColumnName(), (Short) obj);
-                        } else if (obj instanceof Integer) {
-                            contentValues.put(myColumn.getColumnName(), (Integer) obj);
-                        } else if (obj instanceof Long) {
-                            contentValues.put(myColumn.getColumnName(), (Long) obj);
-                        } else if (obj instanceof Float) {
-                            contentValues.put(myColumn.getColumnName(), (Float) obj);
-                        } else if (obj instanceof Double) {
-                            contentValues.put(myColumn.getColumnName(), (Double) obj);
-                        } else {
-                            try {
-                                throw new ORMException("invalid type");
-                            } catch (ORMException e) {
-                                e.printStackTrace();
-                            }
-                        }
-                        i++;
-                    }
+                    id = field.getInt(t);
                 } catch (IllegalAccessException e) {
                     e.printStackTrace();
                 }
-
-                mDatabase.update(TableName, contentValues, whereClause, whereArgs);
-                resetArgs();
-            } else {
-                try {
-                    throw new ORMException("must set whereClause");
-                } catch (ORMException e) {
-                    e.printStackTrace();
-                }
             }
-        } else {
+        }
+        if (id == 0){
             try {
-                throw new ORMException("must set UpdateData");
+                throw new ORMException("no primary set");
             } catch (ORMException e) {
                 e.printStackTrace();
             }
         }
+
+        this.whereClause = "id "+"= "+id;
+
+
+        try {
+            for (MyColumn myColumn : myColumnList) {
+
+                fields[i].setAccessible(true);
+                Object obj = fields[i].get(t);
+
+                if (myColumn.isNotnull() && obj == null) {
+                    try {
+                        throw new ORMException(myColumn.getColumnName() + "is not null");
+                    } catch (ORMException e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                if (obj instanceof String) {
+                    contentValues.put(myColumn.getColumnName(), (String) obj);
+                } else if (obj instanceof Boolean) {
+                    if ((Boolean) obj) {
+                        contentValues.put(myColumn.getColumnName(), (short) 1);
+                    } else {
+                        contentValues.put(myColumn.getColumnName(), (short) 0);
+                    }
+                } else if (obj instanceof Short) {
+                    contentValues.put(myColumn.getColumnName(), (Short) obj);
+                } else if (obj instanceof Integer) {
+                    contentValues.put(myColumn.getColumnName(), (Integer) obj);
+                } else if (obj instanceof Long) {
+                    contentValues.put(myColumn.getColumnName(), (Long) obj);
+                } else if (obj instanceof Float) {
+                    contentValues.put(myColumn.getColumnName(), (Float) obj);
+                } else if (obj instanceof Double) {
+                    contentValues.put(myColumn.getColumnName(), (Double) obj);
+                } else {
+                    try {
+                        throw new ORMException("invalid type");
+                    } catch (ORMException e) {
+                        e.printStackTrace();
+                    }
+                }
+                i++;
+            }
+        } catch (IllegalAccessException e) {
+            e.printStackTrace();
+        }
+
+        Log.i("update",whereClause);
+        Log.i("update",String.valueOf(whereArgs == null));
+        mDatabase.update(TableName, contentValues, whereClause, whereArgs);
+        resetArgs();
     }
 
 

@@ -67,7 +67,9 @@ public class MainActivity extends AppCompatActivity {
         button2.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                List<Foreigner> resultList =  databaseManager.query("name","sex","Nationality").whereClause(new and(new String[]{"age","Nationality"},new Operator[]{Operator.EQUAL,Operator.EQUAL},new String[]{"18","'United States'"})).getQueryResultAsInstance();
+                List<Foreigner> resultList =  databaseManager.query("name","sex","Nationality")
+                                                            .whereClause(new and(new String[]{"age","Nationality"},new Operator[]{Operator.EQUAL,Operator.EQUAL},new String[]{"18","'United States'"}))
+                                                            .getQueryResultAsInstance();
                  for (Foreigner f : resultList){
                      Log.i("Query",f.getName());
                      Log.i("Query",f.getSex());
@@ -87,7 +89,8 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 Foreigner foreigner1 = new Foreigner("Thomas","Male",18,"United States",190000,false);
-                databaseManager.setUpdateData(foreigner1).whereClause(new and(new String[]{"name"},new Operator[]{Operator.EQUAL},new String[]{"'Thomas'"})).update();
+                foreigner1.setId(1);        //通过id说明到底要修改哪一行数据
+                databaseManager.update(foreigner1);
             }
         });
 
